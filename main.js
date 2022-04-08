@@ -3,7 +3,9 @@ const WORDS_FILE = 'words-5.txt';
 const WORDS = 6;
 const LETTERS = 5;
 const COLORS = ['red', 'yellow', 'green'];
-const WINNING_INDEX = COLORS.indexOf('green');
+const RED_INDEX = 0;
+const YELLOW_INDEX = 1;
+const GREEN_INDEX = 2;
 
 function handleLetter(letter, element){
     let guessLetter = {
@@ -73,7 +75,7 @@ function tryWord(word, index){
 
 function isWinningGuess(guess){
     for (let letter of guess){
-        if (letter.colorIndex != WINNING_INDEX){
+        if (letter.colorIndex != GREEN_INDEX){
             return false;
         }
     }
@@ -81,20 +83,138 @@ function isWinningGuess(guess){
     return true;
 }
 
-function getNextWord(previousGuesses){
-    return DICTIONNARY[Math.floor(Math.random() * DICTIONNARY.length)];
+function getGuessedLetters(results){
+    let letters = [ [], [], [] ];
+
+    for (let usedWord in results){
+        let result = results[usedWord]
+        for (let i = 0; i < result.length; i++){
+            let {letter, colorIndex} = result[i];
+
+            let exists = false;
+            for (let item of letters[colorIndex]){
+                if (colorIndex == RED_INDEX){
+                    if (item == letter){
+                        exists = true;
+                        break;
+                    }
+                }
+                else{
+                    if (item.letter == letter && item.index == i){
+                        exists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!exists){
+                if (colorIndex == RED_INDEX){
+                    letters[colorIndex].push(letter);
+                }
+                else{
+                    letters[colorIndex].push({letter: letter, index: i});
+                }
+            }
+        }
+    }
+
+    return letters;
+}
+
+function testWordRed(word, reds){
+    for (let red of reds){
+        if (word.includes(red)){
+            return false
+        }
+    }
+
+    return true;
+}
+
+function testWordYellow(word, yellows){
+    for (let yellow of yellows){
+        let i = word.indexOf(yellow.letter);
+        if (i < 0 || yellow.index == i){
+            return false
+        }
+    }
+
+    return true;
+}
+
+function testWordGreen(word, greens){
+    for (let green of greens){
+        if (word[green.index] != green.letter){
+            return false;
+        }
+    }
+    return true;
+}
+
+function getNextWord(results){
+    let usedWords = Object.keys(results);
+
+    if (usedWords.length > 0){
+        let guessedLetters = getGuessedLetters(results);
+        let reds = guessedLetters[RED_INDEX];
+        let yellows = guessedLetters[YELLOW_INDEX];
+        let greens = guessedLetters[GREEN_INDEX];
+
+        let availableWords = [];
+        for (let word of DICTIONNARY){
+            if (!usedWords.includes(word)){
+                if (testWordGreen(word, greens)){
+                    if (testWordYellow(word, yellows)){
+                        if (testWordRed(word, reds)){
+                            availableWords.push(word);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (availableWords.length > 0){
+            return availableWords[Math.floor(Math.random() * availableWords.length)]
+        }
+        else{
+            return null;
+        }
+
+    }
+    else{
+        return DICTIONNARY[Math.floor(Math.random() * DICTIONNARY.length)];
+    }
 }
 
 async function play(){
-    let guesses = [];
+    let results = {};
 
     for (let i = 0; i < WORDS; i++){
-        let guess = await tryWord(getNextWord(guesses), i);
-        if (isWinningGuess(guess)){
-            return alert('Victory!')
+        showLoading();
+        let word = getNextWord(results)
+        hideLoading();
+        
+        if (word){
+            let result = await tryWord(word, i);
+            if (isWinningGuess(result)){
+                return alert('Victory!')
+            }
+            else{
+                results[word] = result;
+            }
         }
         else{
-            guesses.push(guess);
+            let correct = prompt('Defeat!\nWhat was your word?');
+            if (correct){
+                if (DICTIONNARY.indexOf(correct) < 0){
+                    alert('I do not know this word!');
+                }
+                else{
+                    alert('I somehow missed this word!')
+                }
+            }
+
+            return;
         }
     }
 }
