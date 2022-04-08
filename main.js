@@ -13,33 +13,39 @@ const YELLOW_INDEX = 1;
 const GREEN_INDEX = 2;
 
 // Handles a letter button element
-// Takes a letter character and button element
-function handleLetter(letter, element){
+// Takes a letter character, button element and optionally a starting color
+function handleLetter(letter, element, startColorIndex = null){
     // Object for holding the guess result
     let guessLetter = {
         letter: letter,
-        colorIndex: null
+        colorIndex: startColorIndex
     }
     
-    // Enable pressing button and set its text
-    element.disabled = false;
+    // Set letter text
     element.innerHTML = letter.toUpperCase()
 
-    element.onclick = () => {
-        // If color already set, cycle to the next in the array
-        if (guessLetter.colorIndex !== null){
-            // Remove current color class
-            element.classList.remove(COLORS[guessLetter.colorIndex]);
-            // Rotate color
-            guessLetter.colorIndex = (guessLetter.colorIndex + 1) % COLORS.length;
-        }
-        else{
-            // If not set, set to 0
-            guessLetter.colorIndex = 0;
-        }
+    // If starting color not set, enable clicking
+    if (!startColorIndex){
+        element.disabled = false;
+        element.onclick = () => {
+            // If color already set, cycle to the next in the array
+            if (guessLetter.colorIndex !== null){
+                // Remove current color class
+                element.classList.remove(COLORS[guessLetter.colorIndex]);
+                // Rotate color
+                guessLetter.colorIndex = (guessLetter.colorIndex + 1) % COLORS.length;
+            }
+            else{
+                // If not set, set to 0
+                guessLetter.colorIndex = 0;
+            }
 
-        // Add color class to element
-        element.classList.add(COLORS[guessLetter.colorIndex]);
+            // Add color class to element
+            element.classList.add(COLORS[guessLetter.colorIndex]);
+        }
+    }
+    else{
+        element.classList.add(COLORS[startColorIndex]);
     }
 
     return guessLetter
@@ -74,8 +80,8 @@ function handleSubmit(guessWord){
 }
 
 // Tries to guess the word
-// Takes the current guess word, and the word index
-function tryWord(word, index){
+// Takes the current guess word, the word index, and starting colors
+function tryWord(word, index, startColors){
     return new Promise((resolve, reject) => {
         // Results for the guess
         let guessWord = [];
@@ -84,7 +90,7 @@ function tryWord(word, index){
 
         // Attach handler to letters in word
         for (let i = 0; i < wordElem.children.length; i++){
-            let guessLetter = handleLetter(word[i], wordElem.children[i]);
+            let guessLetter = handleLetter(word[i], wordElem.children[i], startColors[i]);
             guessWord.push(guessLetter);
         }
 
@@ -251,6 +257,26 @@ function getNextWord(results){
     }
 }
 
+function getWordStartingColorsIndexes(word, results){
+    let greens = getGuessedLetters(results)[GREEN_INDEX];
+
+    let colorIndexes = [];
+    for (let i = 0; i < word.length; i++){
+        let colorIndex = null;
+        let letter = word[i];
+
+        for (let green of greens){
+            if (letter == green.letter){
+                colorIndex = GREEN_INDEX;
+            }
+        }
+
+        colorIndexes.push(colorIndex);
+    }
+
+    return colorIndexes;
+}
+
 // Plays game
 // Guesses a word and waits for user to color it
 async function play(){
@@ -267,7 +293,8 @@ async function play(){
         // Check if a word to guess is available
         if (word){
             // If so, try the word and await results
-            let result = await tryWord(word, i);
+            let colors = getWordStartingColorsIndexes(word, results);
+            let result = await tryWord(word, i, colors);
 
             if (isWinningGuess(result)){
                 // If guess was correct, declare victory
