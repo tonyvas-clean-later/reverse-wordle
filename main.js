@@ -1,40 +1,61 @@
+// Array to hold a list of all valid words
 const DICTIONNARY = [];
+// File containing dictionnary
 const WORDS_FILE = 'words-5.txt';
+// Number of attempts
 const WORDS = 6;
+// Number of letters per word
 const LETTERS = 5;
+// Letter colors and indexes
 const COLORS = ['red', 'yellow', 'green'];
 const RED_INDEX = 0;
 const YELLOW_INDEX = 1;
 const GREEN_INDEX = 2;
 
+// Handles a letter button element
+// Takes a letter character and button element
 function handleLetter(letter, element){
+    // Object for holding the guess result
     let guessLetter = {
         letter: letter,
         colorIndex: null
     }
     
+    // Enable pressing button and set its text
     element.disabled = false;
     element.innerHTML = letter.toUpperCase()
+
     element.onclick = () => {
+        // If color already set, cycle to the next in the array
         if (guessLetter.colorIndex !== null){
+            // Remove current color class
             element.classList.remove(COLORS[guessLetter.colorIndex]);
+            // Rotate color
             guessLetter.colorIndex = (guessLetter.colorIndex + 1) % COLORS.length;
         }
         else{
+            // If not set, set to 0
             guessLetter.colorIndex = 0;
         }
 
+        // Add color class to element
         element.classList.add(COLORS[guessLetter.colorIndex]);
     }
 
     return guessLetter
 }
 
+// Handle submit button
+// Takes the guessed letter results
 function handleSubmit(guessWord){
     return new Promise((resolve, reject) => {
+        // Get HTML element
         let submit = document.getElementsByClassName('submit')[0];
+        // Enable clicking
         submit.disabled = false;
+
         submit.onclick = () => {
+            // Verify all letters were colored
             for (let guessLetter of guessWord){
                 if (guessLetter.colorIndex === null){
                     let msg = 'Finish coloring the guess!'
@@ -44,6 +65,7 @@ function handleSubmit(guessWord){
                 }
             }
 
+            // Disable submit button and resolve
             submit.onclick = null;
             submit.disabled = true;
             resolve();
@@ -51,21 +73,29 @@ function handleSubmit(guessWord){
     })
 }
 
+// Tries to guess the word
+// Takes the current guess word, and the word index
 function tryWord(word, index){
     return new Promise((resolve, reject) => {
+        // Results for the guess
         let guessWord = [];
+        // HTML Element for the word
         let wordElem = document.getElementsByClassName('word')[index];
 
+        // Attach handler to letters in word
         for (let i = 0; i < wordElem.children.length; i++){
             let guessLetter = handleLetter(word[i], wordElem.children[i]);
             guessWord.push(guessLetter);
         }
 
+        // Attach submit handler
         handleSubmit(guessWord).then((res) => {
+            // On success disable clicking letters
             for (let letterElem of wordElem.children){
                 letterElem.disabled = true;
             }
 
+            // Resolve with guess results
             resolve(guessWord);
         }).catch(err => {
             console.error(err);
@@ -73,7 +103,10 @@ function tryWord(word, index){
     })
 }
 
+// Checks if guess was correct
+// Takes a guess
 function isWinningGuess(guess){
+    // Check if all letters are green
     for (let letter of guess){
         if (letter.colorIndex != GREEN_INDEX){
             return false;
@@ -83,22 +116,28 @@ function isWinningGuess(guess){
     return true;
 }
 
+// Gets letters based on previous guess colors
 function getGuessedLetters(results){
     let letters = [ [], [], [] ];
 
+    // Loop over each guess
     for (let usedWord in results){
         let result = results[usedWord]
+        // Loop over each letter in guessed word
         for (let i = 0; i < result.length; i++){
             let {letter, colorIndex} = result[i];
 
+            // Check if letter has already been added
             let exists = false;
             for (let item of letters[colorIndex]){
+                // If red, just check the letter
                 if (colorIndex == RED_INDEX){
                     if (item == letter){
                         exists = true;
                         break;
                     }
                 }
+                // If yellow or green, also compare index
                 else{
                     if (item.letter == letter && item.index == i){
                         exists = true;
@@ -107,11 +146,14 @@ function getGuessedLetters(results){
                 }
             }
 
+            // If not added yet, add letter
             if (!exists){
                 if (colorIndex == RED_INDEX){
+                    // If red, just add letter
                     letters[colorIndex].push(letter);
                 }
                 else{
+                    // If yellow or green, add letter and index
                     letters[colorIndex].push({letter: letter, index: i});
                 }
             }
@@ -121,8 +163,12 @@ function getGuessedLetters(results){
     return letters;
 }
 
+// Tests a word against red letters
+// Takes a word to test and red letters
 function testWordRed(word, reds){
+    // Loop over every red letter
     for (let red of reds){
+        // check if word contains red letter
         if (word.includes(red)){
             return false
         }
@@ -131,8 +177,12 @@ function testWordRed(word, reds){
     return true;
 }
 
+// Tests a word against yellow letters
+// Takes a word to test and yellow letters
 function testWordYellow(word, yellows){
+    // Loop over every yellow letter
     for (let yellow of yellows){
+        // Make sure letter is somewhere in the word, but not at the index
         let i = word.indexOf(yellow.letter);
         if (i < 0 || yellow.index == i){
             return false
@@ -142,8 +192,12 @@ function testWordYellow(word, yellows){
     return true;
 }
 
+// Tests a word against green letters
+// Takes a word to test and green letters
 function testWordGreen(word, greens){
+    // Loop over every green letter
     for (let green of greens){
+        // Check if green letter is in word at the index
         if (word[green.index] != green.letter){
             return false;
         }
@@ -151,21 +205,29 @@ function testWordGreen(word, greens){
     return true;
 }
 
+// Gets next guess word based on previous guesses
+// Takes the results of previous guessed
 function getNextWord(results){
+    // Get the previous used words
     let usedWords = Object.keys(results);
 
     if (usedWords.length > 0){
+        // If previous guesses were made, get letters based on color from guesses
         let guessedLetters = getGuessedLetters(results);
         let reds = guessedLetters[RED_INDEX];
         let yellows = guessedLetters[YELLOW_INDEX];
         let greens = guessedLetters[GREEN_INDEX];
 
         let availableWords = [];
+        // Loop over every word in dictionnary and check if it works with results from previous guesses
         for (let word of DICTIONNARY){
+            // Make sure same word wasnt used before
             if (!usedWords.includes(word)){
+                // Test green, yellow and then red
                 if (testWordGreen(word, greens)){
                     if (testWordYellow(word, yellows)){
                         if (testWordRed(word, reds)){
+                            // If all works, word is available
                             availableWords.push(word);
                         }
                     }
@@ -173,7 +235,9 @@ function getNextWord(results){
             }
         }
 
+        // If there are available words
         if (availableWords.length > 0){
+            // Return random word
             return availableWords[Math.floor(Math.random() * availableWords.length)]
         }
         else{
@@ -182,50 +246,72 @@ function getNextWord(results){
 
     }
     else{
+        // Return random letter if no guessed were made
         return DICTIONNARY[Math.floor(Math.random() * DICTIONNARY.length)];
     }
 }
 
+// Plays game
+// Guesses a word and waits for user to color it
 async function play(){
+    // Results from previous guesses
     let results = {};
 
+    // Loop for however many attempts are available
     for (let i = 0; i < WORDS; i++){
         showLoading();
+        // Get next word based on previous results
         let word = getNextWord(results)
         hideLoading();
-        
+
+        // Check if a word to guess is available
         if (word){
+            // If so, try the word and await results
             let result = await tryWord(word, i);
+
             if (isWinningGuess(result)){
+                // If guess was correct, declare victory
                 return alert('Victory!')
             }
             else{
+                // If not, save results and try next attempt
                 results[word] = result;
             }
         }
         else{
-            let correct = prompt('Defeat!\nWhat was your word?');
-            if (correct){
-                if (DICTIONNARY.indexOf(correct) < 0){
-                    alert('I do not know this word!');
-                }
-                else{
-                    alert('I somehow missed this word!')
-                }
-            }
-
-            return;
+            // If no available word to guess, break out of the loop
+            break;
         }
     }
+
+    // If broken out, ask user what was the correct word
+    let correct = prompt('Defeat!\nWhat was your word?');
+    if (correct){
+        // Check if word is in dictionnary
+        if (DICTIONNARY.indexOf(correct) < 0){
+            alert('I do not know this word!');
+        }
+        else{
+            alert('I somehow missed this word!')
+        }
+    }
+
+    return;
 }
 
+// Setup the game screen
+// Sets up the words and letter buttons
 function setup(){
     let main = document.getElementsByTagName('main')[0];
+    // Loop for however many word attempts there are
     for (let w = 0; w < WORDS; w++){
+        // Create word div
         let word = document.createElement('div');
         word.classList.add('word');
 
+        // Loop over however many letters in each word
         for (let l = 0; l < LETTERS; l++){
+            // Create letter button
             let letter = document.createElement('button');
             letter.classList.add('letter')
             letter.disabled = true
@@ -236,6 +322,7 @@ function setup(){
         main.appendChild(word)
     }
 
+    // Create submit button
     let submit = document.createElement('button');
     submit.classList.add('submit')
     submit.disabled = true;
@@ -243,20 +330,25 @@ function setup(){
     main.appendChild(submit)
 }
 
+// Get list of words from file
 function getDictionnary(){
     return new Promise((resolve, reject) => {
         const URL = `/${WORDS_FILE}`;
+        // Fetch word file
         fetch(URL).then(res => res.text()).then(words => {
+            // Split text into array
             resolve(words.trim().split('\n'));
         }).catch(reject);
     })
 }
 
+// Shows loading screen
 function showLoading(){
     document.getElementById('loading_screen').style.display = 'block';
     document.getElementById('game_screen').style.opacity = 0.3
 }
 
+// Hides loading screen
 function hideLoading(){
     document.getElementById('loading_screen').style.display = 'none';
     document.getElementById('game_screen').style.opacity = 1
@@ -265,6 +357,7 @@ function hideLoading(){
 document.body.onload = () => {
     showLoading();
 
+    // Starts setups
     Promise.all([
         setup(),
         getDictionnary().then(dict => {
@@ -274,6 +367,7 @@ document.body.onload = () => {
         })
     ]).then(() => {
         hideLoading();
+        // When done, start game
         play();
     }).catch(err => {
         console.error(err);
