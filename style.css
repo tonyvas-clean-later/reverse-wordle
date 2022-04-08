@@ -67,3 +67,19 @@ main{
 .green{
     background-color: lime;
 }
+
+#loading_screen{
+    position: absolute;
+    display: none;
+    background-color: black;
+
+    width: fit-content;
+    height: fit-content;
+
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+
+    margin: auto;
+}

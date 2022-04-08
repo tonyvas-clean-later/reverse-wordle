@@ -1,3 +1,5 @@
+const DICTIONNARY = [];
+const WORDS_FILE = 'words-5.txt';
 const WORDS = 6;
 const LETTERS = 5;
 const COLORS = ['red', 'yellow', 'green'];
@@ -75,13 +77,12 @@ function isWinningGuess(guess){
             return false;
         }
     }
-    
+
     return true;
 }
 
 function getNextWord(previousGuesses){
-    const TEST_ORDER = ['cargo', 'brown', 'index', 'style', 'horse', 'mouse'];
-    return TEST_ORDER[previousGuesses.length];
+    return DICTIONNARY[Math.floor(Math.random() * DICTIONNARY.length)];
 }
 
 async function play(){
@@ -122,7 +123,39 @@ function setup(){
     main.appendChild(submit)
 }
 
+function getDictionnary(){
+    return new Promise((resolve, reject) => {
+        const URL = `/${WORDS_FILE}`;
+        fetch(URL).then(res => res.text()).then(words => {
+            resolve(words.trim().split('\n'));
+        }).catch(reject);
+    })
+}
+
+function showLoading(){
+    document.getElementById('loading_screen').style.display = 'block';
+    document.getElementById('game_screen').style.opacity = 0.3
+}
+
+function hideLoading(){
+    document.getElementById('loading_screen').style.display = 'none';
+    document.getElementById('game_screen').style.opacity = 1
+}
+
 document.body.onload = () => {
-    setup();
-    play();
+    showLoading();
+
+    Promise.all([
+        setup(),
+        getDictionnary().then(dict => {
+            for (let word of dict){
+                DICTIONNARY.push(word);
+            }
+        })
+    ]).then(() => {
+        hideLoading();
+        play();
+    }).catch(err => {
+        console.error(err);
+    })
 }
